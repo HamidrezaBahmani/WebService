@@ -1,50 +1,40 @@
+// app.js
 const express = require("express");
-const mysql = require("mysql");
-const axios = require("axios");
-const https = require("https");
 const cron = require("node-cron");
 const cors = require("cors");
-const dotenv = require("dotenv");
-
-dotenv.config();
+const database = require("./database");
+const api = require("./api");
+const { getConfig, getaxiosConfig } = require("./config");
+const mysql = require("mysql");
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+const config = getConfig();
+const axiosConfig = getaxiosConfig();
 
 // Default values for environment variables
 const host = process.env.HOST || "127.0.0.1";
 const port = process.env.PORT || 0;
 
-const axiosConfig = {
-  auth: {
-    username: process.env.API_USERNAME,
-    password: process.env.API_PASSWORD,
-  },
-  httpsAgent: new https.Agent({
-    rejectUnauthorized: false,
-  }),
-};
-
+// Your existing MySQL pool configuration...
 const mysqlConfig = {
-  connectionLimit: 1000,
-  connectTimeout: 60 * 60 * 1000,
-  acquireTimeout: 60 * 60 * 1000,
-  timeout: 60 * 60 * 1000,
-  host: process.env.HOST,
-  port: process.env.DB_PORT,
-  user: process.env.USER,
-  password: process.env.PASSWORD,
-  database: process.env.DATABASE,
+  host: config.host,
+  port: config.port,
+  user: config.user,
+  password: config.password,
+  database: config.database,
 };
-
 const pool = mysql.createPool(mysqlConfig);
 
-const tableDefinition = `
-    CREATE TABLE IF NOT EXISTS your_table (
-        matnr VARCHAR(255) PRIMARY KEY,
+// Define different table structures
+const tableDefinitions = {
+  your_table: {
+    structure: `
+      CREATE TABLE IF NOT EXISTS your_table (
+        matnr VARCHAR(255),
         werks VARCHAR(255),
         lgort VARCHAR(255),
         lfgja VARCHAR(4),
@@ -54,93 +44,47 @@ const tableDefinition = `
         insme VARCHAR(10),
         einme VARCHAR(10),
         speme VARCHAR(10),
-        retme VARCHAR(10)
-    );
-`;
+        retme VARCHAR(10),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (matnr, werks, lgort, lfgja)
+      );
+    `,
+    apiUrl: process.env.API_URL,
+  },
+  // Add more table structures and API URLs as needed
+};
 
-const apiUrl = process.env.API_URL;
+Object.keys(tableDefinitions).forEach((tableName) => {
+  cron.schedule("*/2 * * * *", async () => {
+    try {
+      let connection;
+      connection = await new Promise((resolve, reject) => {
+        pool.getConnection((err, conn) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(conn);
+          }
+        });
+      });
 
-function createTable(connection) {
-  connection.query(tableDefinition, (err) => {
-    if (err) {
-      console.error("Error creating table:", err.message);
-      connection.release();
+      const tableDefinition = tableDefinitions[tableName];
+
+      await database.createTable(connection, tableDefinition.structure);
+      const data = await api.fetchData(tableDefinition.apiUrl, axiosConfig);
+      await database.insertData(connection, tableName, data);
+    } catch (error) {
+      console.error(`Error in cron job for ${tableName}:`, error.message);
+    } finally {
+      if (connection) {
+        connection.release();
+      }
     }
   });
-}
+});
 
-function insertData(connection, data) {
-  const columns = Object.keys(data[0]);
-  const placeholders = columns.map(() => "?").join(", ");
+// Other routes and configurations...
 
-  const insertQuery = `INSERT INTO your_table (${columns.join(
-    ", "
-  )}) VALUES ${data
-    .map(() => `(${placeholders})`)
-    .join(", ")} ON DUPLICATE KEY UPDATE ${columns
-    .slice(1)
-    .map((column) => `${column} = VALUES(${column})`)
-    .join(", ")}`;
-
-  const insertValues = data.map((item) => Object.values(item)).flat();
-
-  connection.query(insertQuery, insertValues, (err, result) => {
-    if (err) {
-      console.error("Error inserting data:", err.message);
-    } else {
-      console.log(
-        `[${new Date().toISOString()}] Data inserted or updated successfully. ${
-          result.affectedRows
-        } rows affected.`
-      );
-    }
-
-    connection.release();
-  });
-}
-
-function fetchDataAndInsert(connection) {
-  axios
-    .get(apiUrl, axiosConfig)
-    .then((response) => {
-      const validJsonString = response.data.replace(
-        /([{,])(\s*)([a-zA-Z0-9_\-]+?)\s*:/g,
-        '$1"$3":'
-      );
-      const data = JSON.parse(validJsonString);
-
-      createTable(connection);
-      insertData(connection, data);
-    })
-    .catch((error) => {
-      console.error(
-        `[${new Date().toISOString()}] Error fetching data from API:`,
-        error.message
-      );
-      connection.release();
-    });
-}
-
-function reciveAllData() {
-  console.log(`[${new Date().toISOString()}] Job start`);
-
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error(
-        `[${new Date().toISOString()}] Error acquiring connection from pool:`,
-        err.message
-      );
-      return;
-    }
-
-    fetchDataAndInsert(connection);
-  });
-}
-
-cron.schedule("*/5 * * * *", reciveAllData);
-
-app.listen(port, () =>
-  console.log(
-    `[${new Date().toISOString()}] App is running on http://${host}:${port}`
-  )
-);
+app.listen(port, () => {
+  console.log(`App is running on http://${host}:${port}`);
+});
