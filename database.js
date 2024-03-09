@@ -2,16 +2,14 @@
 const mssql = require("mssql");
 
 async function createTable(connection, tableDefinition) {
-  console.log({ tableDefinition });
   try {
     const request = new mssql.Request(connection);
     const query = `IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '${tableDefinition.name}')
                    CREATE TABLE [${tableDefinition.name}] (${tableDefinition.columns})`;
-    console.log(tableDefinition.columns);
-    console.log({ query });
+
     await request.query(query);
 
-    console.log("Table created successfully.");
+    console.log("Table is exist now.");
   } catch (error) {
     console.error("Error creating table:", error.message);
   }
@@ -69,7 +67,7 @@ async function insertBatch(connection, tableName, data, PriKeyCol) {
     await request.query(insertQuery);
 
     console.log(
-      `[${new Date().toLocaleString()}] Data chunck going to inserted or updated successfully.`
+      `[${new Date().toLocaleString()}] Data chunck inserted or updated successfully to ${tableName}.`
     );
   } catch (error) {
     console.error("Error inserting data chunck:", error.message);

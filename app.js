@@ -6,6 +6,7 @@ const database = require("./database");
 const api = require("./api");
 const { getConfig, getaxiosConfig } = require("./config");
 const mssql = require("mssql");
+var tableDef = require("./tabledefs");
 
 const app = express();
 app.use(cors());
@@ -33,30 +34,7 @@ const sqlServerConfig = {
 const pool = new mssql.ConnectionPool(sqlServerConfig);
 
 // Define different table structures
-const tableDefinitions = {
-  //this recone as [tableName]
-  Material_Stock_table: {
-    name: "Material_Stock_table",
-    columns: `
-    matnr VARCHAR(255),
-    werks VARCHAR(255),
-    lgort VARCHAR(255),
-    lfgja VARCHAR(4),
-    lfmon VARCHAR(2),
-    labst VARCHAR(10),
-    umlme VARCHAR(10),
-    insme VARCHAR(10),
-    einme VARCHAR(10),
-    speme VARCHAR(10),
-    retme VARCHAR(10),
-    created_at DATETIME DEFAULT GETDATE(),
-  `,
-    Primarykeys: ["matnr", "werks", "lgort", "lfgja"],
-    apiUrl: process.env.API_URL,
-    cronSchedule: "*/1 * * * *",
-  },
-  // Add more table structures and API URLs as needed
-};
+const tableDefinitions = tableDef;
 Object.keys(tableDefinitions).forEach(async (tableName) => {
   const cronSchedule =
     tableDefinitions[tableName].cronSchedule || "*/2 * * * *";
@@ -70,7 +48,6 @@ Object.keys(tableDefinitions).forEach(async (tableName) => {
       poolConnect = await pool.connect();
       tableDefinition = tableDefinitions[tableName];
 
-      console.log(typeof tableDefinition.columns, tableDefinition.columns);
       await database.createTable(poolConnect, tableDefinition);
 
       data = await api.fetchData(tableDefinition.apiUrl, axiosConfig);
