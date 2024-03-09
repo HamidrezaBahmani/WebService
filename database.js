@@ -1,42 +1,79 @@
 // database.js
-const mysql = require("mysql");
+const mssql = require("mssql");
 
-function createTable(connection, tableDefinition) {
-  connection.query(tableDefinition, (err) => {
-    if (err) {
-      console.error("Error creating table:", err.message);
-      connection.release();
-    }
-  });
+async function createTable(connection, tableDefinition) {
+  console.log({ tableDefinition });
+  try {
+    const request = new mssql.Request(connection);
+    const query = `IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '${tableDefinition.name}')
+                   CREATE TABLE [${tableDefinition.name}] (${tableDefinition.columns})`;
+    console.log(tableDefinition.columns);
+    console.log({ query });
+    await request.query(query);
+
+    console.log("Table created successfully.");
+  } catch (error) {
+    console.error("Error creating table:", error.message);
+  }
 }
 
-function insertData(connection, tableName, data) {
+async function insertData(
+  connection,
+  tableName,
+  data,
+  PriKeyCol,
+  batchSize = 100
+) {
+  // Split data into batches
+  const batches = [];
+  for (let i = 0; i < data.length; i += batchSize) {
+    batches.push(data.slice(i, i + batchSize));
+  }
+
+  // Process batches
+  for (const batch of batches) {
+    await insertBatch(connection, tableName, batch, PriKeyCol);
+  }
+}
+
+async function insertBatch(connection, tableName, data, PriKeyCol) {
   const columns = Object.keys(data[0]);
-  const primaryKeyColumns = ["matnr", "werks", "lgort", "lfgja"];
 
-  const insertValues = data.map((item) => Object.values(item));
-  const insertQuery = `INSERT INTO your_table (${columns.join(
-    ", "
-  )}) VALUES ? ON DUPLICATE KEY UPDATE ${primaryKeyColumns
-    .map((column) => `${column} = VALUES(${column})`)
-    .join(", ")}`;
+  const primaryKeyColumns = PriKeyCol;
 
-  const updateValues = data.map((item) => {
-    return primaryKeyColumns.map((column) => item[column]).flat();
-  });
+  const insertValues = data.map((item) =>
+    Object.values(item).map((value) =>
+      typeof value === "string" ? `'${value}'` : value
+    )
+  );
+  const insertQuery = `
+    MERGE INTO ${tableName} AS target
+    USING (VALUES ${insertValues
+      .map((values) => `(${values.join(", ")})`)
+      .join(", ")})
+        AS source (${columns.join(", ")})
+    ON ${primaryKeyColumns
+      .map((column) => `target.${column} = source.${column}`)
+      .join(" AND ")}
+    WHEN MATCHED THEN
+        UPDATE SET ${columns
+          .filter((column) => !primaryKeyColumns.includes(column))
+          .map((column) => `target.${column} = source.${column}`)
+          .join(", ")}
+    WHEN NOT MATCHED THEN
+        INSERT (${columns.join(", ")})
+        VALUES (${columns.map((column) => `source.${column}`).join(", ")});`;
 
-  connection.query(insertQuery, [insertValues, updateValues], (err, result) => {
-    if (err) {
-      console.error("Error inserting data:", err.message);
-      connection.release();
-    } else {
-      console.log(
-        `[${new Date().toLocaleString()}] Data inserted or updated successfully. `
-      );
+  try {
+    const request = new mssql.Request(connection);
+    await request.query(insertQuery);
 
-      connection.release();
-    }
-  });
+    console.log(
+      `[${new Date().toLocaleString()}] Data chunck going to inserted or updated successfully.`
+    );
+  } catch (error) {
+    console.error("Error inserting data chunck:", error.message);
+  }
 }
 
 module.exports = {

@@ -5,7 +5,7 @@ const cors = require("cors");
 const database = require("./database");
 const api = require("./api");
 const { getConfig, getaxiosConfig } = require("./config");
-const mysql = require("mysql");
+const mssql = require("mssql");
 
 const app = express();
 app.use(cors());
@@ -19,66 +19,74 @@ const axiosConfig = getaxiosConfig();
 const host = process.env.HOST || "127.0.0.1";
 const port = process.env.PORT || 0;
 
-// Your existing MySQL pool configuration...
-const mysqlConfig = {
-  host: config.host,
-  port: config.port,
+// Your existing SQL Server pool configuration...
+const sqlServerConfig = {
   user: config.user,
   password: config.password,
+  server: config.dbserver,
   database: config.database,
+  options: {
+    // encrypt: true, =>Use this option if connecting to Azure SQL Database
+    trustServerCertificate: true,
+  },
 };
-const pool = mysql.createPool(mysqlConfig);
+const pool = new mssql.ConnectionPool(sqlServerConfig);
 
 // Define different table structures
 const tableDefinitions = {
-  your_table: {
-    structure: `
-      CREATE TABLE IF NOT EXISTS your_table (
-        matnr VARCHAR(255),
-        werks VARCHAR(255),
-        lgort VARCHAR(255),
-        lfgja VARCHAR(4),
-        lfmon VARCHAR(2),
-        labst VARCHAR(10),
-        umlme VARCHAR(10),
-        insme VARCHAR(10),
-        einme VARCHAR(10),
-        speme VARCHAR(10),
-        retme VARCHAR(10),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (matnr, werks, lgort, lfgja)
-      );
-    `,
+  //this recone as [tableName]
+  Material_Stock_table: {
+    name: "Material_Stock_table",
+    columns: `
+    matnr VARCHAR(255),
+    werks VARCHAR(255),
+    lgort VARCHAR(255),
+    lfgja VARCHAR(4),
+    lfmon VARCHAR(2),
+    labst VARCHAR(10),
+    umlme VARCHAR(10),
+    insme VARCHAR(10),
+    einme VARCHAR(10),
+    speme VARCHAR(10),
+    retme VARCHAR(10),
+    created_at DATETIME DEFAULT GETDATE(),
+  `,
+    Primarykeys: ["matnr", "werks", "lgort", "lfgja"],
     apiUrl: process.env.API_URL,
+    cronSchedule: "*/1 * * * *",
   },
   // Add more table structures and API URLs as needed
 };
+Object.keys(tableDefinitions).forEach(async (tableName) => {
+  const cronSchedule =
+    tableDefinitions[tableName].cronSchedule || "*/2 * * * *";
 
-Object.keys(tableDefinitions).forEach((tableName) => {
-  cron.schedule("*/2 * * * *", async () => {
+  cron.schedule(cronSchedule, async () => {
+    let poolConnect;
+    let tableDefinition;
+    let data;
+
     try {
-      let connection;
-      connection = await new Promise((resolve, reject) => {
-        pool.getConnection((err, conn) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(conn);
-          }
-        });
-      });
+      poolConnect = await pool.connect();
+      tableDefinition = tableDefinitions[tableName];
 
-      const tableDefinition = tableDefinitions[tableName];
+      console.log(typeof tableDefinition.columns, tableDefinition.columns);
+      await database.createTable(poolConnect, tableDefinition);
 
-      await database.createTable(connection, tableDefinition.structure);
-      const data = await api.fetchData(tableDefinition.apiUrl, axiosConfig);
-      await database.insertData(connection, tableName, data);
+      data = await api.fetchData(tableDefinition.apiUrl, axiosConfig);
+      await database.insertData(
+        poolConnect,
+        tableName,
+        data,
+        tableDefinition.Primarykeys
+      );
     } catch (error) {
       console.error(`Error in cron job for ${tableName}:`, error.message);
+      console.error("SQL Statement:", tableDefinition.columns);
+      console.error("Data:", data);
+      console.error(`Error in cron job for ${tableName}:`, error.message);
     } finally {
-      if (connection) {
-        connection.release();
-      }
+      poolConnect.release(); // Release the connection in the finally block
     }
   });
 });
@@ -86,5 +94,7 @@ Object.keys(tableDefinitions).forEach((tableName) => {
 // Other routes and configurations...
 
 app.listen(port, () => {
-  console.log(`App is running on http://${host}:${port}`);
+  console.log(
+    `App is running on http://${host}:${port} in ${new Date().toLocaleString()}`
+  );
 });

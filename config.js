@@ -8,6 +8,7 @@ const getConfig = () => {
   return {
     apiUrl: process.env.API_URL,
     host: process.env.HOST,
+    dbserver: process.env.DBSERVER,
     port: process.env.DB_PORT,
     user: process.env.USER,
     password: process.env.PASSWORD,
