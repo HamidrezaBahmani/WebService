@@ -9,7 +9,7 @@ async function createTable(connection, tableDefinition) {
 
     await request.query(query);
 
-    console.log("Table is exist now.");
+    console.log(`Table ${tableDefinition.name} is exist now.`);
   } catch (error) {
     console.error("Error creating table:", error.message);
   }
@@ -67,15 +67,16 @@ async function insertBatch(connection, tableName, data, PriKeyCol) {
     await request.query(insertQuery);
 
     console.log(
-      `[${new Date().toLocaleString()}] Data chunck inserted or updated successfully to ${tableName}.`
+      `[${new Date().toLocaleString()}] Data chunk inserted or updated successfully to ${tableName}.`
     );
   } catch (error) {
-    console.error("Error inserting data chunck:", error.message);
+    console.error("Error inserting data chunk:", error.message);
   }
 }
 
 module.exports = {
   createTable,
   insertData,
+  insertBatch,
   // Add other database-related functions as needed
 };
