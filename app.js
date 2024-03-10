@@ -21,21 +21,13 @@ const host = process.env.HOST || "127.0.0.1";
 const port = process.env.PORT || 0;
 
 // Your existing SQL Server pool configuration...
-const sqlServerConfig = {
-  user: config.user,
-  password: config.password,
-  server: config.dbserver,
-  database: config.database,
-  options: {
-    // encrypt: true, =>Use this option if connecting to Azure SQL Database
-    trustServerCertificate: true,
-  },
-};
-const pool = new mssql.ConnectionPool(sqlServerConfig);
 
 // Define different table structures
 const tableDefinitions = tableDef;
 Object.keys(tableDefinitions).forEach(async (tableName) => {
+  const pool = new mssql.ConnectionPool(
+    tableDefinitions[tableName].sqlServerConfig
+  );
   const cronSchedule =
     tableDefinitions[tableName].cronSchedule || "*/2 * * * *";
 

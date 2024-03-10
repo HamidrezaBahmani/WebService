@@ -1,5 +1,19 @@
+const { getConfig } = require("./config");
+
+const config = getConfig();
+
 const tableDef = {
   MaterialStock_table: {
+    sqlServerConfig: {
+      user: config.user,
+      password: config.password,
+      server: config.dbserver,
+      database: config.database,
+      options: {
+        // encrypt: true, =>Use this option if connecting to Azure SQL Database
+        trustServerCertificate: true,
+      },
+    },
     name: "MaterialStock_table",
     columns: `
       matnr VARCHAR(255),
@@ -16,12 +30,23 @@ const tableDef = {
       created_at DATETIME DEFAULT GETDATE(),
       PRIMARY KEY (matnr,werks,lgort,lfgja)
     `,
-    Primarykeys: ["matnr", "werks", "lgort", "lfgja"],
+    Primarykeys: ["matnr", "werks", "lgort", "lfgja"], //be sure adding Primarykeys defined in table structure  here.
     apiUrl:
-      "https://172.18.112.17:8444/sap/bc/zweb_stocks?sap-client=200&&werks=2301",
+      "https://172.18.112.17:8444/sap/bc/zweb_stocks?sap-client=200&&werks=2301", //fetching url.
     cronSchedule: "*/1 * * * *",
+    //here declare when refetch the API i.e. every 1 min.
   },
   BOM_table: {
+    sqlServerConfig: {
+      user: config.user,
+      password: config.password,
+      server: config.dbserver,
+      database: config.database,
+      options: {
+        // encrypt: true, =>Use this option if connecting to Azure SQL Database
+        trustServerCertificate: true,
+      },
+    },
     name: "BOM_table",
     columns: `
       crmatnr VARCHAR(255),
@@ -45,6 +70,16 @@ const tableDef = {
     cronSchedule: "*/1 * * * *",
   },
   MaterialServiceList_table: {
+    sqlServerConfig: {
+      user: config.user,
+      password: config.password,
+      server: config.dbserver,
+      database: config.database,
+      options: {
+        // encrypt: true, =>Use this option if connecting to Azure SQL Database
+        trustServerCertificate: true,
+      },
+    },
     name: "MaterialServiceList_table",
     columns: `
       matnr VARCHAR(255),
@@ -58,6 +93,16 @@ const tableDef = {
     cronSchedule: "*/1 * * * *",
   },
   UserAsset_table: {
+    sqlServerConfig: {
+      user: config.user,
+      password: config.password,
+      server: config.dbserver,
+      database: config.database,
+      options: {
+        // encrypt: true, =>Use this option if connecting to Azure SQL Database
+        trustServerCertificate: true,
+      },
+    },
     name: "UserAsset_table",
     columns: `
       anln1 VARCHAR(255),
@@ -103,6 +148,16 @@ const tableDef = {
     cronSchedule: "*/1 * * * *",
   },
   Asset_Table: {
+    sqlServerConfig: {
+      user: config.user,
+      password: config.password,
+      server: config.dbserver,
+      database: config.database,
+      options: {
+        // encrypt: true, =>Use this option if connecting to Azure SQL Database
+        trustServerCertificate: true,
+      },
+    },
     name: "Asset_Table",
     columns: `
       anln1 VARCHAR(255),
@@ -125,6 +180,16 @@ const tableDef = {
     cronSchedule: "*/1 * * * *",
   },
   CstCntr_table: {
+    sqlServerConfig: {
+      user: config.user,
+      password: config.password,
+      server: config.dbserver,
+      database: config.database,
+      options: {
+        // encrypt: true, =>Use this option if connecting to Azure SQL Database
+        trustServerCertificate: true,
+      },
+    },
     name: "CstCntr_table",
     columns: `
       kostl VARCHAR(255),
