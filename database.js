@@ -70,7 +70,12 @@ async function insertBatch(connection, tableName, data, PriKeyCol) {
       `[${new Date().toLocaleString()}] Data chunk inserted or updated successfully to ${tableName}.`
     );
   } catch (error) {
-    console.error("Error inserting data chunk:", error.message);
+    console.error(
+      `Error inserting data chunk. Duplicate key values: ${primaryKeyColumns
+        .map((column) => `${column}=${data[0][column]}`)
+        .join(", ")}`,
+      error.message
+    );
   }
 }
 

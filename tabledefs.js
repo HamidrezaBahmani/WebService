@@ -40,15 +40,14 @@ const tableDef = {
       created_at DATETIME DEFAULT GETDATE(),
       PRIMARY KEY (matnr,crmatnr,crmaktx)
     `,
-
     Primarykeys: ["matnr", "crmatnr", "crmaktx"],
     apiUrl: "https://172.18.112.17:8444/sap/bc/zikk_bom?sap-client=200", // Add your API URL here
-    cronSchedule: "*/2 * * * *",
+    cronSchedule: "*/1 * * * *",
   },
   MaterialServiceList_table: {
     name: "MaterialServiceList_table",
     columns: `
-      matnr VARCHAR(255) PRIMARY KEY,
+      matnr VARCHAR(255),
       maktx VARCHAR(255),
       type VARCHAR(1),
       created_at DATETIME DEFAULT GETDATE(),
@@ -56,7 +55,7 @@ const tableDef = {
     `,
     Primarykeys: ["matnr"],
     apiUrl: "https://172.18.112.17:8444/sap/bc/zikk_mat_list?sap-client=200", // Add your API URL here
-    cronSchedule: "*/3 * * * *",
+    cronSchedule: "*/1 * * * *",
   },
   UserAsset_table: {
     name: "UserAsset_table",
@@ -96,13 +95,12 @@ const tableDef = {
       datbi VARCHAR(8),
       kostl VARCHAR(255),
       created_at DATETIME DEFAULT GETDATE(),
-      PRIMARY KEY (anln1,anln2)
-  
+      PRIMARY KEY (anln1,anln2,ltext,anlhtxt)
     `,
-    Primarykeys: ["anln1", "anln2"],
+    Primarykeys: ["anln1", "anln2", "ltext", "anlhtxt", "txt50"],
     apiUrl:
       "https://172.18.112.17:8444/sap/bc/zikk_asset_list?sap-client=200&pernr=@pernr", // Add your API URL here
-    cronSchedule: "*/4 * * * *",
+    cronSchedule: "*/1 * * * *",
   },
   Asset_Table: {
     name: "Asset_Table",
@@ -124,7 +122,7 @@ const tableDef = {
     Primarykeys: ["anln1"],
     apiUrl:
       "https://172.18.112.17:8444/sap/bc/zweb_asset_info?sap-client=200&COMPCO=2300", // Add your API URL here
-    cronSchedule: "*/5 * * * *",
+    cronSchedule: "*/1 * * * *",
   },
   CstCntr_table: {
     name: "CstCntr_table",
@@ -138,10 +136,9 @@ const tableDef = {
     `,
     Primarykeys: ["kostl"],
     apiUrl: "https://172.18.112.17:8444/sap/bc/zikk_costcenter?sap-client=200", // Add your API URL here
-    cronSchedule: "*/6 * * * *",
+    cronSchedule: "*/1 * * * *",
   },
-
-  // Add more table structures and API URLs as needed
+  //Add more table structures and API URLs as needed
 };
 
 module.exports = tableDef;
