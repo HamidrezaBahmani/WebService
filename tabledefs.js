@@ -30,7 +30,7 @@ const tableDef = {
       created_at DATETIME DEFAULT GETDATE(),
       PRIMARY KEY (matnr,werks,lgort,lfgja)
     `,
-    Primarykeys: ["matnr", "werks", "lgort", "lfgja"], //be sure adding Primarykeys defined in table structure  here.
+    Primarykeys: ["matnr", "werks", "lgort", "lfgja"], //be sure adding Primarykeys defined in table structure  here before running app delete old table on db.
     apiUrl:
       "https://172.18.112.17:8444/sap/bc/zweb_stocks?sap-client=200&&werks=2301", //fetching url.
     cronSchedule: "*/1 * * * *",
